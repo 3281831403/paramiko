@@ -254,8 +254,18 @@ class PKey:
         """
         from paramiko import key_classes
 
+        # Certificates advertise as "<plain>-cert-v01@openssh.com" but are
+        # parsed by the plain key classes, which splice the certificate in
+        # alongside the key material.  Not every class lists its cert
+        # identifiers, so fall back to the underlying plain type.
+        cert_suffix = "-cert-v01@openssh.com"
+        plain_type = key_type
+        if key_type.endswith(cert_suffix):
+            plain_type = key_type[: -len(cert_suffix)]
+
         for key_class in key_classes:
-            if key_type in key_class.identifiers():
+            identifiers = key_class.identifiers()
+            if key_type in identifiers or plain_type in identifiers:
                 return key_class(data=key_bytes, password=password)
         raise UnknownKeyType(key_type=key_type, key_bytes=key_bytes)
 
